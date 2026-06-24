@@ -45,17 +45,34 @@ def calculate_timeline(tasks: List[WBSTask], project_start: str = None) -> List[
 
 
 def allocate_budget(tasks: List[WBSTask], total_budget: float) -> List[WBSTask]:
-    leaf_tasks = [t for t in tasks if t.level == 3]
-    total_estimated = sum(t.estimated_cost for t in leaf_tasks)
-
-    if total_estimated == 0:
-        return tasks
-
-    for task in tasks:
-        if task.level == 3:
-            task.estimated_cost = round((task.estimated_cost / total_estimated) * total_budget, 2)
-
+  """Scale leaf-level costs to *total_budget* and roll up parent costs from children."""
+  if not tasks:
     return tasks
+
+  leaf_level = max(t.level for t in tasks)
+  leaf_tasks = [t for t in tasks if t.level == leaf_level]
+  total_estimated = sum(t.estimated_cost for t in leaf_tasks)
+
+  if total_estimated > 0:
+    scaled_costs = [
+      round((t.estimated_cost / total_estimated) * total_budget, 2)
+      for t in leaf_tasks
+    ]
+    remainder = round(total_budget - sum(scaled_costs), 2)
+    if scaled_costs:
+      scaled_costs[-1] = round(scaled_costs[-1] + remainder, 2)
+    for task, cost in zip(leaf_tasks, scaled_costs):
+      task.estimated_cost = cost
+
+  for level in range(leaf_level - 1, 0, -1):
+    for task in tasks:
+      if task.level != level:
+        continue
+      children = [t for t in tasks if t.parent_id == task.id]
+      if children:
+        task.estimated_cost = round(sum(c.estimated_cost for c in children), 2)
+
+  return tasks
 
 
 def apply_estimations(plan: ProjectPlan, project_start: str = None) -> ProjectPlan:

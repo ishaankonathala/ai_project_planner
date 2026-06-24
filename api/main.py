@@ -4,6 +4,7 @@ from models.schemas import ProjectRequest
 from core.id_generator import generate_project_id
 from core.classifier import classify_project
 from core.wbs_generator import generate_wbs
+from core.estimator import apply_estimations
 
 app = FastAPI(title="AXIOM API", version="2.0.0")
 
@@ -41,15 +42,18 @@ def generate_plan(request: ProjectRequest):
         project_id=project_id,
     )
 
-    # 4. Serialise and return — include classification metadata
+    # 4. Apply budget allocation and schedule dates
+    plan = apply_estimations(plan, request.start_date)
+
+    # 5. Serialise and return — include classification metadata
     return {
         "project_id":   plan.project_id,
         "project_name": plan.project_name,
         "project_type": plan.project_type,
         "type_confidence": confidence,          # 0.0 – 1.0
         "total_budget": plan.total_budget,
-        "start_date":   request.start_date,
-        "end_date":     None,
+        "start_date":   plan.start_date,
+        "end_date":     plan.end_date,
         "tasks": [
             task.model_dump() if hasattr(task, "model_dump") else task.dict()
             for task in plan.tasks
