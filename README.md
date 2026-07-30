@@ -1,2 +1,2 @@
 # ai_project_planner
-Ai based project planner
+AI-powered project planning platform that generates SAP-compatible WBS, project schedules, budgets, and resource plans using LLMs and intelligent automation.
